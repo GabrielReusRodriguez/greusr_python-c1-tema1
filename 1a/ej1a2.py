@@ -14,6 +14,9 @@ de ipify.org usando el formato JSON, que es más estructurado que el texto plano
 
 import requests
 
+
+URL="https://api.ipify.org?format=json"
+
 def get_user_ip_json():
     """
     Realiza una petición GET a api.ipify.org para obtener la dirección IP pública
@@ -29,7 +32,19 @@ def get_user_ip_json():
     # 3. Convertir la respuesta a formato JSON
     # 4. Extraer y devolver la IP del campo "ip" del objeto JSON
     # 5. Devolver None si hay algún error
-    pass
+
+    try:
+        response = requests.get(url = URL)
+        if response.status_code != 200:
+            return None
+        #Transformo el json a un diccionario Python.
+        json_data = response.json()
+        #Accedo al campo ip del diccionario.
+        return json_data["ip"]
+
+    except Exception as e:
+        return None
+
 
 def get_response_info():
     """
@@ -48,7 +63,27 @@ def get_response_info():
     #    - 'elapsed_time': El tiempo que tardó la petición (en milisegundos)
     #    - 'response_size': El tamaño de la respuesta en bytes
     # 4. Devolver None si hay algún error
-    pass
+    #pass
+    try:
+        response = requests.get(url = URL)
+        if response.status_code != 200:
+            return None
+        # Tengo la respuesta por lo que accedo a los campos que necesito.
+        info_data = {}
+        # El content type lo saco de la cabecera http de la respuesta Content-Type
+        info_data["content_type"] = response.headers["Content-Type"]
+        """ 
+            El tiempo de la peticion lo saco del propio rsponse elapsed  pero OJO!! que elapsed es un objeto timedelta https://docs.python.org/3/library/datetime.html
+             para obtener el numero de segundos hay que usar la funcion total_seconds() 
+        """
+        info_data["elapsed_time"] = response.elapsed.total_seconds()
+        """ El tamaño de la respuesta lo saco de la cabecera http de la respuesta Content-Length 
+                PEEEEEEEEEEEERO esa web no incluye esa cabecera asi que le hago un len
+        """
+        info_data["response_size"] = len(response.content) 
+        return info_data
+    except Exception as e:
+        return None
 
 if __name__ == "__main__":
     # Ejemplo de uso de las funciones
