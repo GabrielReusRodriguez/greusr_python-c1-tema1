@@ -59,7 +59,7 @@ def get_user_ip():
         if response.status_code != 200:
             return None
         # OJO!!!  que nos devuelven un array de bytes, no un string por lo que antes de devolverlo lo tengo que decodificar
-        return response.content.decode()
+        return response.text
     except Exception as e:
         """
         Aqui deberian ir todas las excepciones que manerjo pero como me especifican que ante cualquier error devuelva None,
