@@ -38,12 +38,8 @@ def get_stations_data():
     try:
         response = requests.get(url)
         if response.status_code == 200:
-            #print(f"Response {response.content}")
-            #json_pd = pd.read_json(response.content)
             json_response = response.json()
-            #json_resp = json.loads(response.content)
             return json_response['data']
-            #print(f"Respuesta: {json_response}")
     except requests.exceptions.RequestException as e:
         print(f"Error al realizar la conexión")
         return None
@@ -130,16 +126,11 @@ def create_stations_dataframe(stations_data):
         return None
     list_stations = []
     for station in stations_data['stations']:
-        #print(f"STATION {station}")
-        #station_dict = json.loads(station)
         list_stations.append(station)
     dataframe = pd.DataFrame(list_stations, columns = ['station_id', 'lat', 'lon', 'name'])
     #Renombro las columnas lat y lon para que cumplan con los requisitos
     dataframe.rename(columns={'lat': 'latitude', 'lon' : 'longitude'}, inplace=True)
     # Fuerzo el id del dataframe al station_id para que no sea el autonumerico.
-#    dataframe.set_index('station_id', inplace=True)
-    #print(f"list stations: {list_stations}")
-    #print(f"DATAFRAME: {dataframe}")
     return dataframe
 
 if __name__ == '__main__':
