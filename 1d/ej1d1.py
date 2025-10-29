@@ -187,11 +187,13 @@ def visualizar_estaciones(df: pd.DataFrame) -> None:
     # Obtenemos los 10 primeros
     df_top_ten = df_sorted.head(10)
     print(f"DASDAS\n {df_top_ten}\n")
-    ax = df_top_ten.plot.bar(x='name', y = 'bikes', rot = 0)
-    ax.set_xlabel("name")
-    ax.set_ylabel("bikes")
-    # Tenemos las figuras configuradas asi que forzamos el plot.
+    ax = df_top_ten.plot(kind= 'barh', title='Disponibilidad de Bicicletas', x= 'name', y = 'bikes')
     plt.show()
+    #ax = df_top_ten.plot.bar(x='name', y = 'bikes', rot = 0)
+    #ax.set_xlabel("name")
+    #ax.set_ylabel("bikes")
+    # Tenemos las figuras configuradas asi que forzamos el plot.
+    #plt.show()
 
 
 if __name__ == "__main__":
