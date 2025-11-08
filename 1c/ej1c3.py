@@ -34,8 +34,10 @@ class StationStatus(enum.Enum):
     """
     # Define aquí los estados posibles (IN_SERVICE, MAINTENANCE, etc.)
     # según la documentación de la API
-    pass
-
+    # Aqui https://github.com/MobilityData/gbfs/blob/v2.0/gbfs.md#station_statusjson podemos encontrar los servicios que existen.
+    IN_SERVICE = 'IN_SERVICE'
+    MAINTENANCE = 'MAINTENANCE'
+    UNKNOWN = 'UNKNOWN'
 
 @dataclass
 class VehicleType:
@@ -43,8 +45,9 @@ class VehicleType:
     Clase que representa un tipo de vehículo y su cantidad disponible.
     """
     # Añade aquí los atributos necesarios: tipo de vehículo (vehicle_type_id) y cantidad (count)
-    pass
-
+    def __init__(self, vehicle_type_id, count):
+        self.vehicle_type_id = vehicle_type_id
+        self.count = count
 
 class StationStatusInfo:
     """
@@ -72,7 +75,26 @@ class StationStatusInfo:
         """
         # Implementa aquí la inicialización de todos los atributos
         # a partir del diccionario station_data
-        pass
+        #pass
+        # Para obtener los valores del dict uso el get con valores default que me permitan identificar los errores y ademas evitar el crash si no existe la key.
+        self.station_id = station_data.get('station_id',0)
+        status = station_data.get('status', StationStatus.UNKNOWN)
+        if status == StationStatus.IN_SERVICE.value:
+        #if status == 'IN_SERVICE':
+            #print(f"IN_SERVICE!!\n")
+            self.status = StationStatus.IN_SERVICE
+        elif status == StationStatus.MAINTENANCE.value: 
+            self.status = StationStatus.MAINTENANCE
+        else:
+            self.status = StationStatus.UNKNOWN   
+        #self.status = station_data.get('status', StationStatus.UNKNOWN)
+        self.num_bikes_available = station_data.get('num_bikes_available',0)
+        self.num_bikes_disabled = station_data.get('num_bikes_disabled', 0)
+        self.num_docks_available = station_data.get('num_docks_available', 0)
+        self.is_renting = station_data.get('is_renting',False)
+        self.is_returning = station_data.get('is_returning', False)
+        self.last_reported = station_data.get('last_reported',None)
+        self.vehicle_types = station_data.get('vehicle_types_available',[])
     
     @property
     def is_operational(self) -> bool:
@@ -84,7 +106,7 @@ class StationStatusInfo:
             bool: True si la estación está operativa, False en caso contrario
         """
         # Implementa aquí la lógica para determinar si la estación está operativa
-        pass
+        return self.status == StationStatus.IN_SERVICE and self.is_renting == True and self.is_returning == True
     
     def get_available_bikes_by_type(self) -> Dict[str, int]:
         """
@@ -96,7 +118,14 @@ class StationStatusInfo:
         """
         # Implementa aquí la lógica para devolver un diccionario
         # con la cantidad de bicicletas disponibles por tipo
-        pass
+        #pass
+        dict_vehicles_availables = {}
+        for vehicle_type in self.vehicle_types:
+            # Vamos una por una de la lista y la que no tengamos en el diccionario, la agregamos.
+            if vehicle_type['vehicle_type_id'] not in dict_vehicles_availables:
+                #No tenemos el tipo de vehiculo por lo que inicializamos el par key - value
+                dict_vehicles_availables[vehicle_type['vehicle_type_id']] = vehicle_type['count']
+        return dict_vehicles_availables
     
     def __str__(self) -> str:
         """
@@ -107,7 +136,19 @@ class StationStatusInfo:
         """
         # Implementa aquí la lógica para devolver una representación en texto
         # de la estación y su estado actual
-        pass
+        str_estado =  f"Estado de la estacion : {self.station_id}\n"
+        str_estado += f"-------------------------------------------\n"
+        str_estado += f"\tStatus: \t{self.status}\n"
+        str_estado += f"\tNum Bikes Available: \t{self.num_bikes_available}\n"
+        str_estado += f"\tNum Bikes Disabled: \t{self.num_bikes_disabled}\n"
+        str_estado += f"\tNum Docks Available: \t{self.num_docks_available}\n"
+        str_estado += f"\tIs renting: \t{self.is_renting}\n"
+        str_estado += f"\tIs returning: \t{self.is_returning}\n"
+        # Transformo el timestamp.
+        dt = datetime.fromtimestamp(self.last_reported)
+        str_estado += f"\tLast reported: \t{dt}\n"
+        str_estado += f"\tVehicle types: \t{self.vehicle_types}\n"
+        return str_estado
 
 
 class BarcelonaBikingClient:
@@ -121,7 +162,7 @@ class BarcelonaBikingClient:
         """
         self.base_url = "https://barcelona.publicbikesystem.net/customer/gbfs/v2/en"
         self.station_status_url = f"{self.base_url}/station_status"
-    
+
     def get_stations_status(self) -> Tuple[List[StationStatusInfo], Optional[datetime]]:
         """
         Obtiene el estado actual de todas las estaciones de bicicletas.
@@ -137,7 +178,39 @@ class BarcelonaBikingClient:
         # 3. Crear objetos StationStatusInfo para cada estación en la respuesta
         # 4. Extraer el timestamp de last_updated de la respuesta
         # 5. Manejar posibles errores (conexión, formato, etc.)
-        pass
+        #pass
+        # 1. Hacemos la peticion
+        resp_json = {}
+        list_StationStatus = []
+        try:
+            response  = requests.get(self.station_status_url)
+            #2. Check de los codigos de error 4XX 5XX
+            response.raise_for_status()
+            #Reviso que todo haya ido bien (200)
+            if response.status_code != 200:
+                return None
+            resp_json = response.json()
+        except requests.exceptions.HTTPError as e:
+            print(f"Error HTTPError {e}\n")
+            return [], None
+        except requests.exceptions.RequestException as e:
+            print(f"Error RequestException {e}")
+            return [], None
+        #3. Creo los objetos StationStatusInfo
+        list_stations = resp_json['data']['stations'] 
+        for station in list_stations:
+            #print(f"GABRIEL: {station}\n")
+            stationInfo = StationStatusInfo(station)
+            list_StationStatus.append(stationInfo)
+        # Busco el last update que es la key last_update
+        timestamp = None
+        #print(f"JSON: {resp_json['last_update']}\n")
+        if 'last_updated'  in resp_json:
+            timestamp = resp_json['last_updated']
+        # Guardo la lista en la instancia xq1 si no luego no puedo buscar por id ya que en el ebnunciado no pasa la lista. 
+        self.list_stationStatus = list_StationStatus
+        return (list_StationStatus, timestamp)
+
     
     def find_station_by_id(self, station_id: str) -> Optional[StationStatusInfo]:
         """
@@ -151,7 +224,14 @@ class BarcelonaBikingClient:
                                          o None si no se encuentra
         """
         # Implementa aquí la lógica para buscar y devolver una estación por su ID
-        pass
+
+        #pass
+        list_stations,_ = self.get_stations_status()
+        if list_stations is not None:
+            for station in list_stations:
+                if station.station_id == station_id:
+                    return station
+        return None
     
     def get_operational_stations(self) -> List[StationStatusInfo]:
         """
@@ -161,7 +241,14 @@ class BarcelonaBikingClient:
             List[StationStatusInfo]: Lista de estaciones operativas
         """
         # Implementa aquí la lógica para filtrar y devolver solo las estaciones operativas
-        pass
+        list_operational_stations = []
+        list_stations, _ = self.get_stations_status()
+        if list_stations is not None:
+            for station in list_stations:
+                # es un property por lo que aunque lo llamemos como un atributo, se comporta como un getter.
+                if station.is_operational == True:
+                    list_operational_stations.append(station)
+        return list_operational_stations
     
     def get_stations_with_available_bikes(self, min_bikes: int = 1) -> List[StationStatusInfo]:
         """
@@ -175,7 +262,13 @@ class BarcelonaBikingClient:
         """
         # Implementa aquí la lógica para filtrar y devolver las estaciones
         # con al menos min_bikes disponibles
-        pass
+        list_stations_w_bikes = []
+        list_stations, _ = self.get_stations_status()
+        if list_stations is not None:
+            for station in list_stations:
+                if station.num_bikes_available > min_bikes:
+                    list_stations_w_bikes.append(station)
+        return list_stations_w_bikes
 
 
 if __name__ == "__main__":

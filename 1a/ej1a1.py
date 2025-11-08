@@ -14,6 +14,8 @@ a la API de ipify.org, un servicio estable que proporciona la IP pública.
 
 import requests
 
+URL = "https://api.ipify.org"
+
 def get_user_ip():
     """
     Realiza una petición GET a api.ipify.org para obtener la dirección IP pública
@@ -28,7 +30,42 @@ def get_user_ip():
     # 2. Verificar si la petición fue exitosa (código 200)
     # 3. Devolver el texto de la respuesta directamente (contiene la IP)
     # 4. Devolver None si hay algún error
-    pass
+    #pass
+
+    """
+            response.raise_for_status()
+
+            Podria evaluar el codigo con un ifelse o algo similar a a un swithc else 
+            pero utilizo raise_for_Status para que en caso de un código de error salte una excepcion:
+
+            NO reiventar la rueda.
+            Pero por lo que leo en el enunciado, hay que hacerlo a mano.
+            """ 
+
+    """
+    try:
+        response = requests.get(url = URL)
+        if response.status_code != 200:
+            return None
+        print(f"Obtenido: {response}\n")
+    except RequestException as e:
+        print(f"Error al obtener la url {URL}\n") 
+        return None
+    """
+    #Llamo la url con el objeto request y obtengo la respuesta en response
+    try:
+        response = requests.get(url = URL)
+        #Check del codigo.
+        if response.status_code != 200:
+            return None
+        # OJO!!!  que nos devuelven un array de bytes, no un string por lo que antes de devolverlo lo tengo que decodificar
+        return response.text
+    except Exception as e:
+        """
+        Aqui deberian ir todas las excepciones que manerjo pero como me especifican que ante cualquier error devuelva None,
+        le pongo el catch Excception generico.
+        """
+        return None
 
 if __name__ == "__main__":
     # Ejemplo de uso de la función
